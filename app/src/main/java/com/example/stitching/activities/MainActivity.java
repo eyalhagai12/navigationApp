@@ -32,6 +32,15 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(i);
             }
         });
+
+        Button heightButton = findViewById(R.id.heightEstimation);
+        heightButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent i = new Intent(MainActivity.this, HeightActivity.class);
+                startActivity(i);
+            }
+        });
     }
 
 }

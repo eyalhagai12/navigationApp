@@ -13,6 +13,7 @@ import android.util.Log;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 
+import com.example.stitching.GPS.CoordinateConverter;
 import com.example.stitching.GPS.GPSPoint;
 import com.example.stitching.GPS.GPSPointFactory;
 import com.example.stitching.R;
@@ -51,6 +52,7 @@ public class GPSSceneRecognitionActivity extends AppCompatActivity {
         double yChange = (top - y_center) * yDistancePerPixel;
 
         GPSPoint destination = GPSPointFactory.fromVelocity(centerPoint, xChange, yChange, 0);
+        double[] coords = CoordinateConverter.xyzToLatLonDegrees(new double[]{destination.x(), destination.y(), destination.z()});
 
         // Draw to the screen
         Paint paint = new Paint();
