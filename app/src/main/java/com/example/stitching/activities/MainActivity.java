@@ -41,6 +41,15 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(i);
             }
         });
+
+        Button stitchingYoni = findViewById(R.id.stitchingYoniButton);
+        stitchingYoni.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent i = new Intent(MainActivity.this, StitchingYoni.class);
+                startActivity(i);
+            }
+        });
     }
 
 }
