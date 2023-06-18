@@ -19,12 +19,17 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.example.stitching.GPS.GPSPoint;
+import com.example.stitching.GPS.GPSPointFactory;
+import com.example.stitching.GPS.Point;
+import com.example.stitching.GPS.PointAlgo;
 import com.example.stitching.R;
 import com.example.stitching.Stitching.StitchingUtils;
 
@@ -40,6 +45,8 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -54,27 +61,34 @@ import boofcv.struct.image.ImageBase;
 import boofcv.struct.image.ImageType;
 import boofcv.struct.image.Planar;
 import georegression.struct.homography.Homography2D_F64;
+import georegression.struct.point.Point2D_F64;
+import georegression.struct.point.Point2D_I32;
+import georegression.transform.homography.HomographyPointOps_F64;
 
 public class StitchingYoni extends VisualizeCamera2Activity{
-    private static final int REQUEST_CODE_READ_EXTERNAL_STORAGE = 1001;
-    private PointTracker<GrayF32> tracker;
-    ImageMotion2D<GrayF32, Homography2D_F64> motion2D;
-    ImageMotion2D<Planar<GrayF32>, Homography2D_F64> motion2DColor;
-//    private StitchingFromMotion2D<Planar<GrayF32>, Homography2D_F64> stitch;
     private boolean takeNewImageAndProcess;
     private boolean takeFrameFromVideoAndProcess;
-    private ImageSingleton imageSingleton;
 
     ImageView stitchView;
     ImageView nextImageView;
     ImageView lastImageView;
     VideoView videoView;
-//    Planar<GrayF32> lastImage;
-//    private final Class<GrayF32> imageClass = GrayF32.class;
+    TextView distanceView;
+    TextView degreeView;
+    TextView degreeChangeView;
+    TextView elevationView;
     Planar<GrayF32> lastImage;
     Planar<GrayF32> nextVideoFrame;
-//    Planar<GrayF32> nextImage;
-    boolean flagwithNext = false;
+    double degree = 0;
+    double degreeChange;
+    GPSPoint startingPoint;
+    List<GPSPoint> gpsPoints;
+    double xDistancePerPixel;
+    double yDistancePerPixel;
+    // TODO understand from camera params and height
+    double xDistance = 500;
+    double yDistance = 500;
+    final double distanceThreshold = 1.5;
 
 
 
@@ -86,6 +100,10 @@ public class StitchingYoni extends VisualizeCamera2Activity{
         takeNewImageAndProcess = false;
         takeFrameFromVideoAndProcess = false;
 
+        // initialize points for GPS
+        startingPoint = GPSPointFactory.fromGPSCoords(32.09237848, 35.17513055, 564.05338779);
+        gpsPoints = new LinkedList<>();
+        gpsPoints.add(startingPoint);
 
     }
 
@@ -103,7 +121,13 @@ public class StitchingYoni extends VisualizeCamera2Activity{
         nextImageView = findViewById(R.id.next_image);
         lastImageView = findViewById(R.id.last_image);
         videoView = findViewById(R.id.video_view);
-//        Button showResults = findViewById(R.id.showResults);
+
+        // text for debug
+
+        distanceView = findViewById(R.id.distance_text);
+        degreeView = findViewById(R.id.degree_text);;
+         degreeChangeView = findViewById(R.id.degree_change_text);;
+         elevationView = findViewById(R.id.elevation_text);;
 
         takePicture.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -114,36 +138,27 @@ public class StitchingYoni extends VisualizeCamera2Activity{
             }
         });
 
-//        File privateDir = getFilesDir();
-//        Log.d("AppStorage", "Private Storage Directory: " + privateDir.getAbsolutePath());
-
-        String videoUrl = "Paste Your Video URL Here";
-
 
         // read video and send frames as if they are camera frames
 
-        // Replace "video_path" with the actual path of your video file
-//        String videoPath = "res/drawable/drone_foot_trim.mp4";
+
+//        int sampleEveryMillisec = 4000;
+////        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+//
 
 
-        int sampleEveryMillisec = 4000;
-//        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-
-
-
-        String url = "http://www.youtube.com/watch?v=1FJHYqE0RDg";
-        videoUrl = getUrlVideoRTSP(url);
-        VideoView videoView = findViewById(R.id.video_view);
-
-        Uri uri = Uri.parse(videoUrl);
-
-        // sets the resource from the
-        // videoUrl to the videoView
-        videoView.setVideoURI(uri);
-
-
-        // Start playing the video
-        videoView.start();
+//        String url = "http://www.youtube.com/watch?v=1FJHYqE0RDg";
+//        VideoView videoView = findViewById(R.id.video_view);
+//
+//        Uri uri = Uri.parse(videoUrl);
+//
+//        // sets the resource from the
+//        // videoUrl to the videoView
+//        videoView.setVideoURI(uri);
+//
+//
+//        // Start playing the video
+//        videoView.start();
 //
 //        try {
 //            // Set the data source to the video file
@@ -183,47 +198,6 @@ public class StitchingYoni extends VisualizeCamera2Activity{
         startCamera(surface, null);
     }
 
-    public static String getUrlVideoRTSP(String urlYoutube) {
-        try {
-            String gdy = "http://gdata.youtube.com/feeds/base/videos/-/justinbieber?orderby=published&alt=rss&client=ytapi-youtube-rss-redirect&v=2";
-            DocumentBuilder documentBuilder = DocumentBuilderFactory
-                    .newInstance().newDocumentBuilder();
-            String id = extractYoutubeId(urlYoutube);
-            URL url = new URL(gdy + id);
-            HttpURLConnection connection = (HttpURLConnection) url
-                    .openConnection();
-            Document doc = documentBuilder.parse(connection.getInputStream());
-            Element el = doc.getDocumentElement();
-            NodeList list = el.getElementsByTagName("media:content");// /media:content
-            String cursor = urlYoutube;
-            for (int i = 0; i < list.getLength(); i++) {
-                Node node = list.item(i);
-                if (node != null) {
-                    NamedNodeMap nodeMap = node.getAttributes();
-                    HashMap<String, String> maps = new HashMap<String, String>();
-                    for (int j = 0; j < nodeMap.getLength(); j++) {
-                        Attr att = (Attr) nodeMap.item(j);
-                        maps.put(att.getName(), att.getValue());
-                    }
-                    if (maps.containsKey("yt:format")) {
-                        String f = maps.get("yt:format");
-                        if (maps.containsKey("url")) {
-                            cursor = maps.get("url");
-                        }
-                        if (f.equals("1"))
-                            return cursor;
-                    }
-                }
-            }
-            return cursor;
-        } catch (Exception ex) {
-            Log.e("Get Url Video RTSP Exception======>>", ex.toString());
-        }
-        return urlYoutube;
-    }
-    private static String extractYoutubeId(String url) {
-        return url;
-    }
 
 
 //    @Override
@@ -266,20 +240,24 @@ public class StitchingYoni extends VisualizeCamera2Activity{
 
             takeNewImageAndProcess = false;
         }
-        if (takeFrameFromVideoAndProcess) {
 
-            // next video frame set in video loop every x seconds
-            stitchImagesAndDisplayInfo(nextVideoFrame);
-
-            takeFrameFromVideoAndProcess = false;
-        }
+//        if (takeFrameFromVideoAndProcess) {
+//
+//            // next video frame set in video loop every x seconds
+//            stitchImagesAndDisplayInfo(nextVideoFrame);
+//
+//            takeFrameFromVideoAndProcess = false;
+//        }
 
     }
 
     private void stitchImagesAndDisplayInfo(Planar<GrayF32> nextImage){
-        // initialize first image
+        // initialize first image and some related parameters
         if(lastImage == null) {
-            lastImage = copyBoof(nextImage);// important to copy!
+            lastImage = nextImage.clone();// important to copy!
+            // compute distance (in meters) per pixel
+            xDistancePerPixel = xDistance / lastImage.getWidth();
+            yDistancePerPixel = yDistance / lastImage.getHeight();
             // display first image
             runOnUiThread(new Runnable() {
                 @Override
@@ -290,12 +268,10 @@ public class StitchingYoni extends VisualizeCamera2Activity{
 
 //                    Toast.makeText(StitchingYoni.this, "lastimage is null", Toast.LENGTH_SHORT).show();
                 }
-
             });
             takeNewImageAndProcess = false;
             return;
         }
-
 
         // draw next and last images
         runOnUiThread(new Runnable() {
@@ -323,20 +299,60 @@ public class StitchingYoni extends VisualizeCamera2Activity{
         Homography2D_F64 transform = StitchingUtils.stitch(grayLast, grayNew, GrayF32.class);
 
 
-        Bitmap stitchedImage = StitchingUtils.computeStitchedImage(lastImage, nextImage , transform);
+        // use the homography to transform the center of the previous image
+        // take top and center points
+        Point2D_F64 startImageCenter = new Point2D_F64(lastImage.getWidth() / 2.0, lastImage.getHeight() / 2.0);
+        Point2D_F64 startImageTop = new Point2D_F64(lastImage.getWidth() / 2.0, 0.0);
 
+        // compute the transform on those points
+        Point2D_F64 transformedCenterPoint = new Point2D_F64();
+        Point2D_F64 transformedTopPoint = new Point2D_F64();
+        HomographyPointOps_F64.transform(transform, startImageCenter, transformedCenterPoint);
+        HomographyPointOps_F64.transform(transform, startImageTop, transformedTopPoint);
+
+        // compute degree from two lines in the space of the stitch
+        degreeChange = calculateDegree(
+                startImageTop.x - startImageCenter.x,
+                startImageTop.y - startImageCenter.y,
+                transformedTopPoint.x - transformedCenterPoint.x,
+                transformedTopPoint.y - transformedCenterPoint.y);
+        degree += degreeChange;
+
+
+        // compute distances in meters and get new point from result
+        double xDistanceMeters = (startImageCenter.x - transformedCenterPoint.x) * xDistancePerPixel;
+        double yDistanceMeters = (startImageCenter.y - transformedCenterPoint.y) * yDistancePerPixel;
+        double[] rotatedVector = rotateVector(xDistanceMeters, yDistanceMeters, degree);
+        GPSPoint lastPoint = gpsPoints.get(gpsPoints.size() - 1);
+        GPSPoint newPoint = GPSPointFactory.fromVelocity(lastPoint, rotatedVector[0], rotatedVector[1], 0);
+        double distance = PointAlgo.distance(lastPoint, newPoint);
+
+        // add point when enough distance tavelled
+        if (distance > distanceThreshold) {
+            gpsPoints.add(newPoint);
+//                    System.out.println("Moving! (Distance: " + distance + ")");
+        }
+
+        // rotation is only for displaying! can make it all the time if needed
+        Bitmap stitchedImage = StitchingUtils.computeStitchedImage(lastImage, nextImage , transform);
         Bitmap rotatedImage  = rotate90DegCW(stitchedImage);
 
-
-        // display stitch
+        // display stitch and update text elements with computed info
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 stitchView.setImageBitmap(rotatedImage);
+
+                distanceView.setText("total distance"+ distance);
+                degreeView .setText("degree"+ degree);
+                degreeChangeView.setText("degreeChange"+ degreeChange);
+                elevationView .setText("todo implement");
+
+
             }
         });
         // important to copy!
-        lastImage = copyBoof(nextImage);
+        lastImage = nextImage.clone();
     }
 
 
@@ -352,17 +368,45 @@ public class StitchingYoni extends VisualizeCamera2Activity{
 
 
 
-    // optimize maybe
-    public static Planar<GrayF32> copyBoof(Planar<GrayF32> image){
-        // make a copy of the image
-        Bitmap bitmapImage = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888);
-        ConvertBitmap.boofToBitmap(image, bitmapImage, null);
 
-        // Convert the Bitmap to Planar<GrayF32>
-        Planar<GrayF32> boofcvImage = new Planar<>(GrayF32.class, image.getWidth(), image.getHeight(), 3);
-        ConvertBitmap.bitmapToBoof(bitmapImage, boofcvImage, null);
-        return boofcvImage;
 
+    private static Point2D_I32 renderPoint(int x0, int y0, Homography2D_F64 fromBtoWork) {
+        Point2D_F64 result = new Point2D_F64();
+        HomographyPointOps_F64.transform(fromBtoWork, new Point2D_F64(x0, y0), result);
+        return new Point2D_I32((int) result.x, (int) result.y);
+    }
+
+    public static double calculateDegree(double x1, double y1, double x2, double y2) {
+        double angle1 = Math.atan2(y1, x1);
+        double angle2 = Math.atan2(y2, x2);
+        double radians = angle2 - angle1;
+
+        // Convert the angle to the range of -pi to pi
+        if (radians > Math.PI) {
+            radians -= 2 * Math.PI;
+        } else if (radians < -Math.PI) {
+            radians += 2 * Math.PI;
+        }
+
+        // Convert radians to degrees
+
+        return Math.toDegrees(radians);
+    }
+
+    public static double[] rotateVector(double x, double y, double degrees) {
+        // Convert the angle from degrees to radians
+        double radians = Math.toRadians(degrees);
+
+        // Calculate the cosine and sine of the angle
+        double cosTheta = Math.cos(radians);
+        double sinTheta = Math.sin(radians);
+
+        // Perform the rotation using the rotation matrix
+        double newX = x * cosTheta - y * sinTheta;
+        double newY = x * sinTheta + y * cosTheta;
+
+        // Return the new rotated vector as an array
+        return new double[]{newX, newY};
     }
 
     /**
