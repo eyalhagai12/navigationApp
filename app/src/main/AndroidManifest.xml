@@ -8,7 +8,6 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_MEDIA_STORAGE" />
 
-
     <uses-feature android:name="android.hardware.camera2.full" />
 
     <application
@@ -21,6 +20,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Stitching"
         tools:targetApi="31">
+        <activity
+            android:name=".LockOnActivity"
+            android:exported="false" />
         <activity
             android:name=".activities.StitchingYoni"
             android:exported="false" />

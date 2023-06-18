@@ -1,4 +1,4 @@
-package com.example.stitching.HeightEstimation;
+package com.example.stitching.SensorClasses;
 
 import android.content.Context;
 import android.hardware.Sensor;
