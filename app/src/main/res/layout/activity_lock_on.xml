@@ -6,10 +6,10 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:gravity="center"
-    tools:context=".LockOnActivity">
+    tools:context=".activities.LockOnActivity">
 
-    <ImageView
-        android:id="@+id/imageView"
+    <FrameLayout
+        android:id="@+id/lockOnImage"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="10"/>
@@ -17,5 +17,5 @@
         android:id="@+id/lockOn"
         android:layout_width="100dp"
         android:layout_height="50dp"
-        android:text="Lock"/>
+        android:text="Lock On"/>
 </LinearLayout>

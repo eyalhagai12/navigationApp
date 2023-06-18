@@ -50,6 +50,15 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(i);
             }
         });
+
+        Button lockOnButton = findViewById(R.id.lockOnActivity);
+        lockOnButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent i = new Intent(MainActivity.this, LockOnActivity.class);
+                startActivity(i);
+            }
+        });
     }
 
 }
