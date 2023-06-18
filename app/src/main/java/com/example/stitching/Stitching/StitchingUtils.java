@@ -1,6 +1,7 @@
 package com.example.stitching.Stitching;
 
 import android.graphics.Bitmap;
+import android.util.Pair;
 
 import org.ddogleg.fitting.modelset.ModelMatcher;
 import org.ddogleg.struct.DogArray;
@@ -38,6 +39,7 @@ import boofcv.struct.image.Planar;
 import georegression.struct.homography.Homography2D_F64;
 import georegression.struct.point.Point2D_F64;
 import georegression.struct.point.Point2D_I32;
+import georegression.transform.homography.HomographyPointOps_F64;
 
 /*
  * Contains functions to compute homography over two images and their stitch.
@@ -45,10 +47,46 @@ import georegression.struct.point.Point2D_I32;
 
 public class StitchingUtils {
 
+
+    public static List<Point2D_F64> isTransformMessedUp(Homography2D_F64 T){
+        // ab and cd are two parallel lines
+        Point2D_F64 a = new Point2D_F64(0, 0);
+        Point2D_F64 b = new Point2D_F64(150, 7);
+        Point2D_F64 c = new Point2D_F64(20,0);
+        Point2D_F64 d = new Point2D_F64(0, 0);
+
+
+        // compute transformation on pointe
+        Point2D_F64 at = new Point2D_F64();
+        Point2D_F64 bt = new Point2D_F64();
+//        Point2D_F64 ct = new Point2D_F64();
+//        Point2D_F64 dt = new Point2D_F64();
+
+        HomographyPointOps_F64.transform(T, a, at);
+        HomographyPointOps_F64.transform(T, b, bt);
+//        HomographyPointOps_F64.transform(T, c, ct);
+//        HomographyPointOps_F64.transform(T, d, dt);
+
+        // check if points flipped positions
+        // initially xa < xc and ya > yc
+        // initially xb > xd and yb > yd
+        // true if one of the above flips
+
+        ArrayList<Point2D_F64> result = new ArrayList<>();
+        result.add(at);
+        result.add(bt);
+        return result;
+//        if((at.x > ct.x && at.y < ct.y) || (bt.x < dt.x && bt.y <dt.y))
+//            return true;
+//        return false;
+    }
+
+
+
     /**
-     * Given two input images create and display an image where the two have been overlayed on top of each other.
+     * Given two input images, compute the transform.
      */
-    public static <T extends ImageGray<T>> Homography2D_F64 stitch(T inputA, T inputB, Class<T> imageType) {
+    public static <T extends ImageGray<T>> Pair<Homography2D_F64, Double> stitch(T inputA, T inputB, Class<T> imageType) {
 //        T inputA = ConvertBufferedImage.convertFromSingle(imageA, null, imageType);
 //        T inputB = ConvertBufferedImage.convertFromSingle(imageB, null, imageType);
 
@@ -60,12 +98,16 @@ public class StitchingUtils {
         ScoreAssociation<TupleDesc_F64> scorer = FactoryAssociation.scoreEuclidean(TupleDesc_F64.class, true);
         AssociateDescription<TupleDesc_F64> associate = FactoryAssociation.greedy(new ConfigAssociateGreedy(true, 2), scorer);
 
+
+
+
         // fit the images using a homography. This works well for rotations and distant objects.
         ModelMatcher<Homography2D_F64, AssociatedPair> modelMatcher = FactoryMultiViewRobust.homographyRansac(null, new ConfigRansac(60, 3));
 
         Homography2D_F64 H = computeTransform(inputA, inputB, detDesc, associate, modelMatcher);
+        double fitScore = associate.getMatches().get(0).fitScore;
 
-        return H;
+        return new Pair<>(H, fitScore);
     }
 
     /**

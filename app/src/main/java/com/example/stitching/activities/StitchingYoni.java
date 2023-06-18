@@ -1,58 +1,33 @@
 package com.example.stitching.activities;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CaptureRequest;
-import android.media.MediaMetadataRetriever;
-import android.media.MediaPlayer;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
-import android.util.Log;
+import android.os.Handler;
+import android.util.Pair;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 import android.widget.VideoView;
-
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
 import com.example.stitching.GPS.GPSPoint;
 import com.example.stitching.GPS.GPSPointFactory;
-import com.example.stitching.GPS.Point;
 import com.example.stitching.GPS.PointAlgo;
+import com.example.stitching.Logging.Logger;
 import com.example.stitching.R;
+import com.example.stitching.SensorClasses.HeightEstimator;
+import com.example.stitching.SensorClasses.IMU;
 import com.example.stitching.Stitching.StitchingUtils;
 
-import org.w3c.dom.Attr;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-
-import boofcv.abst.sfm.d2.ImageMotion2D;
-import boofcv.abst.tracker.PointTracker;
 import boofcv.android.ConvertBitmap;
 import boofcv.android.camera2.VisualizeCamera2Activity;
 import boofcv.core.image.ConvertImage;
@@ -65,6 +40,8 @@ import georegression.struct.point.Point2D_F64;
 import georegression.struct.point.Point2D_I32;
 import georegression.transform.homography.HomographyPointOps_F64;
 
+import static android.icu.lang.UCharacter.GraphemeClusterBreak.T;
+
 public class StitchingYoni extends VisualizeCamera2Activity{
     private boolean takeNewImageAndProcess;
     private boolean takeFrameFromVideoAndProcess;
@@ -72,11 +49,12 @@ public class StitchingYoni extends VisualizeCamera2Activity{
     ImageView stitchView;
     ImageView nextImageView;
     ImageView lastImageView;
-    VideoView videoView;
-    TextView distanceView;
-    TextView degreeView;
-    TextView degreeChangeView;
-    TextView elevationView;
+//    VideoView videoView;
+    TextView textInfoView;
+    TextView dynamicTextView;
+//    TextView degreeView;
+//    TextView degreeChangeView;
+//    TextView elevationView;
     Planar<GrayF32> lastImage;
     Planar<GrayF32> nextVideoFrame;
     double degree = 0;
@@ -89,6 +67,20 @@ public class StitchingYoni extends VisualizeCamera2Activity{
     double xDistance = 500;
     double yDistance = 500;
     final double distanceThreshold = 1.5;
+    private HeightEstimator heightEstimator;
+    private IMU imuSensor;
+    private Handler handler;
+    private Handler handler2;
+    private static final int CHECK_INTERVAL = 500; // Interval in milliseconds
+    private Runnable updateHeight;
+    private Runnable updateStitch;
+
+    private static final int STITCH_INTERVAL = 3000; // Interval in milliseconds
+    private double initialHeight = -1;
+
+    private double heightFromFloor;
+    Logger logger;
+
 
 
 
@@ -105,6 +97,7 @@ public class StitchingYoni extends VisualizeCamera2Activity{
         gpsPoints = new LinkedList<>();
         gpsPoints.add(startingPoint);
 
+
     }
 
     /*
@@ -120,23 +113,56 @@ public class StitchingYoni extends VisualizeCamera2Activity{
         stitchView = findViewById(R.id.stitch_image);
         nextImageView = findViewById(R.id.next_image);
         lastImageView = findViewById(R.id.last_image);
-        videoView = findViewById(R.id.video_view);
+        dynamicTextView = findViewById(R.id.dynamicText);
+        textInfoView = findViewById(R.id.text_info);
+//        videoView = findViewById(R.id.video_view);
+
+        // height estimation stuff
+        imuSensor = new IMU(this);
+        heightEstimator = new HeightEstimator(this);
+        handler = new Handler();
+
+        handler2 = new Handler();
+
+        logger = new Logger(getExternalFilesDir("Logs"));
+
+        // always runs and updates height
+        updateHeight = new Runnable() {
+            @Override
+            public void run() {
+                if(initialHeight == -1){initialHeight = heightEstimator.getHeight();}
+                heightFromFloor = Math.max(0, heightEstimator.getHeight() - initialHeight);
+
+                float[] orientation = imuSensor.getAngles();
+                dynamicTextView.setText("Height: " + heightEstimator.getHeight() + ", pitch: " + orientation[0] + ", roll: " + orientation[1]);
+                handler.postDelayed(updateHeight, CHECK_INTERVAL);
+
+                logger.write("heightFromFloor: " +heightFromFloor);
+            }
+        };
 
         // text for debug
+//        degreeView = findViewById(R.id.degree_text);;
+//         degreeChangeView = findViewById(R.id.degree_change_text);;
+//         elevationView = findViewById(R.id.elevation_text);;
 
-        distanceView = findViewById(R.id.distance_text);
-        degreeView = findViewById(R.id.degree_text);;
-         degreeChangeView = findViewById(R.id.degree_change_text);;
-         elevationView = findViewById(R.id.elevation_text);;
-
-        takePicture.setOnClickListener(new View.OnClickListener() {
+        //updates stitch automatically every interval
+        updateStitch = new Runnable() {
             @Override
-            public void onClick(View view) {
-//                Toast.makeText(StitchingYoni.this, "Taking and processing new image", Toast.LENGTH_SHORT).show();
+            public void run() {
                 takeNewImageAndProcess = true;
-
+                handler2.postDelayed(updateStitch, STITCH_INTERVAL);
             }
-        });
+        };
+
+//        takePicture.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+////                Toast.makeText(StitchingYoni.this, "Taking and processing new image", Toast.LENGTH_SHORT).show();
+//                takeNewImageAndProcess = true;
+//
+//            }
+//        });
 
 
         // read video and send frames as if they are camera frames
@@ -251,6 +277,8 @@ public class StitchingYoni extends VisualizeCamera2Activity{
 
     }
 
+
+
     private void stitchImagesAndDisplayInfo(Planar<GrayF32> nextImage){
         // initialize first image and some related parameters
         if(lastImage == null) {
@@ -296,7 +324,8 @@ public class StitchingYoni extends VisualizeCamera2Activity{
         ConvertImage.average(nextImage , grayNew);
 
         // compute transform between next and last
-        Homography2D_F64 transform = StitchingUtils.stitch(grayLast, grayNew, GrayF32.class);
+        Pair<Homography2D_F64, Double> transformScore = StitchingUtils.stitch(grayLast, grayNew, GrayF32.class);
+        Homography2D_F64 transform = transformScore.first;
 
 
         // use the homography to transform the center of the previous image
@@ -337,16 +366,28 @@ public class StitchingYoni extends VisualizeCamera2Activity{
         Bitmap stitchedImage = StitchingUtils.computeStitchedImage(lastImage, nextImage , transform);
         Bitmap rotatedImage  = rotate90DegCW(stitchedImage);
 
+        // compute change in height
+
         // display stitch and update text elements with computed info
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 stitchView.setImageBitmap(rotatedImage);
+                String transformStatus = StitchingUtils.isTransformMessedUp(transform).toString();
+//                if(StitchingUtils.isTransformMessedUp(transform)){
+//                    transformStatus = "transform bad";
+//                }else{
+//                    transformStatus = "transform good";
+//                }
 
-                distanceView.setText("total distance"+ distance);
-                degreeView .setText("degree"+ degree);
-                degreeChangeView.setText("degreeChange"+ degreeChange);
-                elevationView .setText("todo implement");
+
+                // todo make inside single text view
+                textInfoView.setText("total distance"+ distance +"\n" +
+//                        "degree"+ degree +"\n" +
+                                "degreeChange"+ degreeChange + "\n" +
+//                + "feature match score" + featureMatchScore + "\n"
+                 "height " + heightEstimator.getHeight() + "\n"+
+                        transformStatus);
 
 
             }
@@ -421,6 +462,23 @@ public class StitchingYoni extends VisualizeCamera2Activity{
         return boofcvImage;
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        heightEstimator.startEstimation();
+        imuSensor.start();
+        handler.postDelayed(updateHeight, CHECK_INTERVAL);
+        handler2.postDelayed(updateStitch, STITCH_INTERVAL);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        heightEstimator.stopEstimation();
+        imuSensor.stop();
+        handler.removeCallbacks(updateHeight);
+        handler2.postDelayed(updateStitch, STITCH_INTERVAL);
+    }
 
 
 
