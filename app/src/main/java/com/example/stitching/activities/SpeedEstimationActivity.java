@@ -92,34 +92,39 @@ public class SpeedEstimationActivity extends VisualizeCamera2Activity {
 
             GrayF32 grayImage = ConvertImage.average((Planar<GrayF32>) image, null);
             GrayF32 grayPreviousImage = ConvertImage.average(previousImage, null);
-            Pair<Homography2D_F64, Double> stitch_result = StitchingUtils.stitch(grayPreviousImage, grayImage, GrayF32.class);
-            transform = stitch_result.first;
+            try {
+                Pair<Homography2D_F64, Double> stitch_result = StitchingUtils.stitch(grayPreviousImage, grayImage, GrayF32.class);
 
-            double xPixelDistance = calculateXDistancePerPixel();
-            double yPixelDistance = calculateYDistancePerPixel();
+                transform = stitch_result.first;
 
-            Point2D_F64 previousCenter = new Point2D_F64(x, y);
-            Point2D_F64 transformedPoint = HomographyPointOps_F64.transform(transform, previousCenter, null);
+                double xPixelDistance = calculateXDistancePerPixel();
+                double yPixelDistance = calculateYDistancePerPixel();
 
-            double xVec = (previousCenter.x - transformedPoint.x) * xPixelDistance;
-            double yVec = (previousCenter.y - transformedPoint.y) * yPixelDistance;
-            double distance = Math.sqrt(Math.pow(xVec, 2) + Math.pow(yVec, 2));
+                Point2D_F64 previousCenter = new Point2D_F64(x, y);
+                Point2D_F64 transformedPoint = HomographyPointOps_F64.transform(transform, previousCenter, null);
 
-            Log.d("Speed", "Speed: " + (distance / time));
-            String text = "Speed: " + String.format("%.3f", (distance / time)) + "m/s" + ", Time: " + time;
+                double xVec = (previousCenter.x - transformedPoint.x) * xPixelDistance;
+                double yVec = (previousCenter.y - transformedPoint.y) * yPixelDistance;
+                double distance = Math.sqrt(Math.pow(xVec, 2) + Math.pow(yVec, 2));
 
-            speedText.setText(text);
+                Log.d("Speed", "Speed: " + (distance / time));
+                String text = "Speed: " + String.format("%.3f", (distance / time)) + "m/s" + ", Time: " + time;
 
-            prevTime = System.currentTimeMillis();
-            double[] rotatedValues = rotateVector(x, y, azimuth);
-            gpsPoint = GPSPointFactory.fromVelocity(gpsPoint, rotatedValues[0], rotatedValues[1], 0);
+                speedText.setText(text);
 
-            logger.setAzimuth(azimuth);
-            logger.setPitch(pitch);
-            logger.setRoll(roll);
-            logger.setPosition(gpsPoint);
-            logger.setImage((Planar<GrayF32>) image);
-            logger.write();
+                prevTime = System.currentTimeMillis();
+                double[] rotatedValues = rotateVector(x, y, azimuth);
+                gpsPoint = GPSPointFactory.fromVelocity(gpsPoint, rotatedValues[0], rotatedValues[1], 0);
+
+                logger.setAzimuth(azimuth);
+                logger.setPitch(pitch);
+                logger.setRoll(roll);
+                logger.setPosition(gpsPoint);
+                logger.setImage((Planar<GrayF32>) image);
+                logger.write();
+            } catch (Exception e) {
+                return;
+            }
         }
     }
 
