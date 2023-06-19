@@ -106,7 +106,7 @@ public class MotionLogger {
 
     private void writeToFile(File f, String txt) {
         try {
-            FileWriter fw = new FileWriter(f.getPath());
+            FileWriter fw = new FileWriter(f.getPath(), true);
             fw.write(txt);
             fw.flush();
         } catch (IOException e) {
