@@ -63,11 +63,11 @@ public class MotionLogger {
     }
 
     public void write() {
-        String orientationText = "" + azimuth + "," + pitch + "," + roll;
+        String orientationText = "" + azimuth + "," + pitch + "," + roll + "\n";
         writeToFile(orientationLogFile, orientationText);
 
         double[] coords = CoordinateConverter.xyzToLatLonDegrees(new double[]{position.x(), position.y(), position.z()});
-        String positionText = "Lat: " + coords[0] + ", Long: " + coords[1];
+        String positionText = "Lat: " + coords[0] + ", Long: " + coords[1] + "\n";
         writeToFile(positionLogFile, positionText);
 
         savePlanarImage(image);
@@ -108,6 +108,7 @@ public class MotionLogger {
         try {
             FileWriter fw = new FileWriter(f.getPath());
             fw.write(txt);
+            fw.flush();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
