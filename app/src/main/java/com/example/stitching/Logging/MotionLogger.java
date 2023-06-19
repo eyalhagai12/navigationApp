@@ -99,12 +99,8 @@ public class MotionLogger {
             // Close the file output stream
             fos.close();
 
-            // Image saved successfully
-            System.out.println("Image saved successfully.");
         } catch (IOException e) {
             e.printStackTrace();
-            // Failed to save the image
-            System.out.println("Failed to save the image.");
         }
     }
 
