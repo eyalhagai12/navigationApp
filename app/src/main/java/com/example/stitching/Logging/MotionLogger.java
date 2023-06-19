@@ -95,6 +95,7 @@ public class MotionLogger {
 
             // Compress the bitmap to the output stream as a JPEG image
             bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+            fos.flush();
 
             // Close the file output stream
             fos.close();
@@ -146,8 +147,8 @@ public class MotionLogger {
         }
 
         frames = new File(currentLogDir, "frames");
-        if (!currentLogDir.exists()) {
-            boolean success = currentLogDir.mkdirs();
+        if (!frames.exists()) {
+            boolean success = frames.mkdirs();
             if (!success) {
                 Log.e(TAG, "failed to create '" + frames.getPath() + "' directory");
                 return;
@@ -183,3 +184,4 @@ public class MotionLogger {
             return;
         }
     }
+}
