@@ -16,6 +16,7 @@ import android.widget.TextView;
 
 import com.example.stitching.GPS.GPSPoint;
 import com.example.stitching.GPS.GPSPointFactory;
+import com.example.stitching.Logging.MotionLogger;
 import com.example.stitching.R;
 import com.example.stitching.SensorClasses.HeightEstimator;
 import com.example.stitching.SensorClasses.IMU;
@@ -37,14 +38,14 @@ public class SpeedEstimationActivity extends VisualizeCamera2Activity {
     private TextView speedText;
     private FrameLayout videoFeed;
     private HeightEstimator heightEstimator;
+    private MotionLogger logger;
     private IMU imuSensor;
-    private float pitch, roll;
+    private float azimuth, pitch, roll;
 
     private Homography2D_F64 transform;
     private Planar<GrayF32> previousImage;
     private double height;
     private double xFOV, yFOV;
-    private double angle;
     private GPSPoint gpsPoint;
     private long prevTime;
     private int counter;
@@ -54,6 +55,8 @@ public class SpeedEstimationActivity extends VisualizeCamera2Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_speed_estimation);
 
+        logger = new MotionLogger(this);
+
         heightEstimator = new HeightEstimator(this);
         imuSensor = new IMU(this);
 
@@ -62,7 +65,6 @@ public class SpeedEstimationActivity extends VisualizeCamera2Activity {
         height = 1.5;
         xFOV = 80;
         yFOV = 80;
-        angle = 0;
         gpsPoint = GPSPointFactory.fromGPSCoords(32.10260582, 35.20946193, 676.35322859);
         prevTime = System.currentTimeMillis();
         counter = 0;
@@ -80,8 +82,10 @@ public class SpeedEstimationActivity extends VisualizeCamera2Activity {
 
             double time = (System.currentTimeMillis() - prevTime) / 1000.0;
             float[] orientation = imuSensor.getAngles();
-            pitch = orientation[0];
-            roll = orientation[1];
+            azimuth = orientation[0];
+            pitch = orientation[1];
+            roll = orientation[2];
+
 
             int x = (int) (((bitmap.getWidth() / 2) * (1 - pitch / 40)));
             int y = (int) (((bitmap.getHeight() / 2) * (1 - roll / 30)));
@@ -107,7 +111,15 @@ public class SpeedEstimationActivity extends VisualizeCamera2Activity {
             speedText.setText(text);
 
             prevTime = System.currentTimeMillis();
-            gpsPoint = GPSPointFactory.fromVelocity(gpsPoint, xVec, yVec, 0);
+            double[] rotatedValues = rotateVector(x, y, azimuth);
+            gpsPoint = GPSPointFactory.fromVelocity(gpsPoint, rotatedValues[0], rotatedValues[1], 0);
+
+            logger.setAzimuth(azimuth);
+            logger.setPitch(pitch);
+            logger.setRoll(roll);
+            logger.setPosition(gpsPoint);
+            logger.setImage((Planar<GrayF32>) image);
+            logger.write();
         }
     }
 
@@ -147,5 +159,22 @@ public class SpeedEstimationActivity extends VisualizeCamera2Activity {
 
     private double calculateYDistancePerPixel() {
         return (2 * Math.tan(yFOV / 2.0) * height) / previousImage.height;
+    }
+
+
+    public static double[] rotateVector(double x, double y, double angleInDegrees) {
+        double angleInRadians = Math.toRadians(angleInDegrees);
+        double[] vector = new double[]{x, y};
+        return rotateVector(vector, angleInRadians);
+    }
+
+    public static double[] rotateVector(double[] vector, double angle) {
+        double sinTheta = Math.sin(angle);
+        double cosTheta = Math.cos(angle);
+
+        double rotatedX = vector[0] * cosTheta - vector[1] * sinTheta;
+        double rotatedY = vector[0] * sinTheta + vector[1] * cosTheta;
+
+        return new double[]{rotatedX, rotatedY};
     }
 }
