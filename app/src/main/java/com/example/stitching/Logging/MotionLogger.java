@@ -70,7 +70,7 @@ public class MotionLogger {
         String positionText = "Lat: " + coords[0] + ", Long: " + coords[1];
         writeToFile(positionLogFile, positionText);
 
-        File imageFile = new File(frames, "image_" + n_frames + ".jpg");
+        savePlanarImage(image);
 
         n_frames++;
     }
@@ -80,7 +80,7 @@ public class MotionLogger {
         File storageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
 
         // Create a file name
-        String fileName = "image.jpg";
+        String fileName = "image_" + n_frames + ".jpg";
 
         // Create the output file
         File outputFile = new File(storageDir, fileName);
