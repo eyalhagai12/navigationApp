@@ -44,11 +44,12 @@ public class IMU implements SensorEventListener {
 
         float pitch = (float) Math.toDegrees(orientationAngles[1]);
         float roll = (float) Math.toDegrees(orientationAngles[2]);
+        float azimuth = (float) Math.toDegrees(orientationAngles[0]);
 
         runningPitch = (runningPitch * EPS + pitch * (1 - EPS));
         runinngRoll = (runinngRoll * EPS + roll * (1 - EPS));
 
-        return new float[]{runningPitch, runinngRoll};
+        return new float[]{azimuth, runningPitch, runinngRoll};
     }
 
     @Override

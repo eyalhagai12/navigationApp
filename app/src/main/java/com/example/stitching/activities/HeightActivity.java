@@ -33,7 +33,7 @@ public class HeightActivity extends AppCompatActivity {
             @Override
             public void run() {
                 float[] orientation = imuSensor.getAngles();
-                heightText.setText("Height: " + heightEstimator.getHeight() + ", pitch: " + orientation[0] + ", roll: " + orientation[1]);
+                heightText.setText("Height: " + heightEstimator.getHeight() + ", Azimuth: " + orientation[0]);
                 handler.postDelayed(updateHeight, CHECK_INTERVAL);
             }
         };
