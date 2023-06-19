@@ -9,6 +9,7 @@ import android.graphics.Paint;
 import android.graphics.Point;
 import android.os.Bundle;
 import android.util.Log;
+import android.util.Pair;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -87,7 +88,8 @@ public class SpeedEstimationActivity extends VisualizeCamera2Activity {
 
             GrayF32 grayImage = ConvertImage.average((Planar<GrayF32>) image, null);
             GrayF32 grayPreviousImage = ConvertImage.average(previousImage, null);
-            transform = StitchingUtils.stitch(grayPreviousImage, grayImage, GrayF32.class);
+            Pair<Homography2D_F64, Double> stitch_result = StitchingUtils.stitch(grayPreviousImage, grayImage, GrayF32.class);
+            transform = stitch_result.first;
 
             double xPixelDistance = calculateXDistancePerPixel();
             double yPixelDistance = calculateYDistancePerPixel();
