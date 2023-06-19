@@ -39,9 +39,6 @@
             android:name=".activities.HeightActivity"
             android:exported="false" />
         <activity
-            android:name=".activities.GPSSceneRecognitionActivity"
-            android:exported="false" />
-        <activity
             android:name=".activities.VisualizeActivity"
             android:exported="false" />
         <activity

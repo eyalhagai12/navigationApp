@@ -18,6 +18,7 @@ import boofcv.android.ConvertBitmap;
 
 public class MainActivity extends AppCompatActivity {
     boolean backgroundStarted = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -72,12 +73,12 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
 //                Intent i = new Intent(MainActivity.this, LockOnActivity.class);
 //                startActivity(i);
-                if(!backgroundStarted) {
+                if (!backgroundStarted) {
                     Log.i("mainActivity", "background log starting");
 
                     startService(new Intent(MainActivity.this, BackgroundLogging.class));
                     backgroundStarted = true;
-                }else{
+                } else {
                     Log.i("mainActivity", "log already running");
                 }
             }
@@ -89,6 +90,16 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 Intent i = new Intent(MainActivity.this, SpeedEstimationActivity.class);
+                startActivity(i);
+            }
+        });
+
+
+        Button sceneRecognition = findViewById(R.id.sceneRecognition);
+        sceneRecognition.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent i = new Intent(MainActivity.this, SceneRecognitionActivity.class);
                 startActivity(i);
             }
         });
