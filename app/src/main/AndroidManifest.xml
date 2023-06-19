@@ -21,6 +21,9 @@
         android:theme="@style/Theme.Stitching"
         tools:targetApi="31">
         <activity
+            android:name=".activities.SpeedEstimationActivity"
+            android:exported="false" />
+        <activity
             android:name=".activities.LockOnActivity"
             android:exported="false" />
         <activity

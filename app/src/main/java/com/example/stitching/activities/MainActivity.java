@@ -59,6 +59,16 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(i);
             }
         });
+
+
+        Button motionEstimation = findViewById(R.id.motionEstimation);
+        motionEstimation.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent i = new Intent(MainActivity.this, SpeedEstimationActivity.class);
+                startActivity(i);
+            }
+        });
     }
 
 }

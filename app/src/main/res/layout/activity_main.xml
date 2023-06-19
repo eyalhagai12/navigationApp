@@ -36,4 +36,11 @@
         android:layout_height="wrap_content"
         android:text="Lock On" />
 
+
+    <Button
+        android:id="@+id/motionEstimation"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:text="Motion" />
+
 </LinearLayout>
