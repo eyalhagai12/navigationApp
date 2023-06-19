@@ -59,7 +59,7 @@ public class StitchingYoni extends VisualizeCamera2Activity{
     Planar<GrayF32> nextVideoFrame;
     double degree = 0;
     double degreeChange;
-    GPSPoint startingPoint;
+//    GPSPoint startingPoint;
     List<GPSPoint> gpsPoints;
     double xDistancePerPixel;
     double yDistancePerPixel;
@@ -67,6 +67,8 @@ public class StitchingYoni extends VisualizeCamera2Activity{
     double xDistance = 500;
     double yDistance = 500;
     final double distanceThreshold = 1.5;
+    GPSPoint lastLocation;
+//    File logFile;
     private HeightEstimator heightEstimator;
     private IMU imuSensor;
     private Handler handler;
@@ -93,9 +95,14 @@ public class StitchingYoni extends VisualizeCamera2Activity{
         takeFrameFromVideoAndProcess = false;
 
         // initialize points for GPS
-        startingPoint = GPSPointFactory.fromGPSCoords(32.09237848, 35.17513055, 564.05338779);
+        // init first point
+        lastLocation = GPSPointFactory.fromGPSCoords(32.09237848, 35.17513055, 564.05338779);
+        // init list of all coordinates
         gpsPoints = new LinkedList<>();
-        gpsPoints.add(startingPoint);
+        gpsPoints.add(lastLocation);
+        // init log to save in text file
+
+//        logFile = new File(this.getFilesDir(), "mylog.txt");
 
 
     }
@@ -352,13 +359,14 @@ public class StitchingYoni extends VisualizeCamera2Activity{
         double xDistanceMeters = (startImageCenter.x - transformedCenterPoint.x) * xDistancePerPixel;
         double yDistanceMeters = (startImageCenter.y - transformedCenterPoint.y) * yDistancePerPixel;
         double[] rotatedVector = rotateVector(xDistanceMeters, yDistanceMeters, degree);
-        GPSPoint lastPoint = gpsPoints.get(gpsPoints.size() - 1);
-        GPSPoint newPoint = GPSPointFactory.fromVelocity(lastPoint, rotatedVector[0], rotatedVector[1], 0);
-        double distance = PointAlgo.distance(lastPoint, newPoint);
+
+        GPSPoint newLocation = GPSPointFactory.fromVelocity(lastLocation, rotatedVector[0], rotatedVector[1], 0);
+        double distance = PointAlgo.distance(lastLocation, newLocation);
 
         // add point when enough distance tavelled
         if (distance > distanceThreshold) {
-            gpsPoints.add(newPoint);
+            gpsPoints.add(newLocation);
+            lastLocation = GPSPointFactory.fromGPSCoords(newLocation.x(), newLocation.y(), newLocation.z());
 //                    System.out.println("Moving! (Distance: " + distance + ")");
         }
 

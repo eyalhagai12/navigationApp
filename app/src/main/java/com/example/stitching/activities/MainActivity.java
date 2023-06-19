@@ -1,16 +1,23 @@
 package com.example.stitching.activities;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.stitching.Logging.BackgroundLogging;
 import com.example.stitching.R;
+
+import boofcv.android.ConvertBitmap;
 
 
 public class MainActivity extends AppCompatActivity {
+    boolean backgroundStarted = false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,6 +64,22 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 Intent i = new Intent(MainActivity.this, LockOnActivity.class);
                 startActivity(i);
+            }
+        });
+        Button backgroundLoggingButton = findViewById(R.id.backgroudLogging);
+        backgroundLoggingButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+//                Intent i = new Intent(MainActivity.this, LockOnActivity.class);
+//                startActivity(i);
+                if(!backgroundStarted) {
+                    Log.i("mainActivity", "background log starting");
+
+                    startService(new Intent(MainActivity.this, BackgroundLogging.class));
+                    backgroundStarted = true;
+                }else{
+                    Log.i("mainActivity", "log already running");
+                }
             }
         });
 
