@@ -8,16 +8,22 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 
 public class IMU implements SensorEventListener {
+    private static float EPS = 0.6f;
     private SensorManager sensorManager;
     private Sensor accelerometer;
     private Sensor magnetometer;
     private float[] accelerometerReading = new float[3];
     private float[] magnetometerReading = new float[3];
 
+    private float runningPitch, runinngRoll;
+    private int count;
+
     public IMU(Context context) {
         sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        runningPitch = 0;
+        runinngRoll = 0;
     }
 
     public void start() {
@@ -38,8 +44,12 @@ public class IMU implements SensorEventListener {
 
         float pitch = (float) Math.toDegrees(orientationAngles[1]);
         float roll = (float) Math.toDegrees(orientationAngles[2]);
+        float azimuth = (float) Math.toDegrees(orientationAngles[0]);
 
-        return new float[]{pitch, roll};
+        runningPitch = (runningPitch * EPS + pitch * (1 - EPS));
+        runinngRoll = (runinngRoll * EPS + roll * (1 - EPS));
+
+        return new float[]{azimuth, runningPitch, runinngRoll};
     }
 
     @Override

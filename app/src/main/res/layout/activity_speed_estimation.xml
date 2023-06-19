@@ -4,13 +4,20 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:gravity="center"
-    tools:context=".activities.LockOnActivity">
+    android:orientation="vertical"
+    tools:context=".activities.SpeedEstimationActivity">
 
     <FrameLayout
-        android:id="@+id/lockOnImage"
+        android:id="@+id/videoFeed"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="10"/>
+        android:layout_weight="15" />
+
+    <TextView
+        android:id="@+id/speedText"
+        android:layout_width="match_parent"
+        android:layout_height="5dp"
+        android:layout_weight="1"
+        android:gravity="center" />
 </LinearLayout>
