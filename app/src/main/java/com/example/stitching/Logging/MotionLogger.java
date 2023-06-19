@@ -83,7 +83,7 @@ public class MotionLogger {
         String fileName = "image_" + n_frames + ".jpg";
 
         // Create the output file
-        File outputFile = new File(storageDir, fileName);
+        File outputFile = new File(frames, fileName);
 
         try {
             // Create a file output stream
@@ -144,7 +144,20 @@ public class MotionLogger {
         } else {
             Log.i(TAG, "'" + path + "' exists");
         }
+
+        frames = new File(currentLogDir, "frames");
+        if (!currentLogDir.exists()) {
+            boolean success = currentLogDir.mkdirs();
+            if (!success) {
+                Log.e(TAG, "failed to create '" + frames.getPath() + "' directory");
+                return;
+            }
+            Log.i(TAG, "Frames Directory Created Successfully!");
+        } else {
+            Log.i(TAG, "Frames directory exists");
+        }
     }
+
 
     public void createLogFiles() {
         positionLogFile = new File(currentLogDir, "position_log.txt");
@@ -169,17 +182,4 @@ public class MotionLogger {
             e.printStackTrace();
             return;
         }
-
-        frames = new File(currentLogDir, "frames");
-        if (!currentLogDir.exists()) {
-            boolean success = currentLogDir.mkdirs();
-            if (!success) {
-                Log.e(TAG, "failed to create '" + frames.getPath() + "' directory");
-                return;
-            }
-            Log.i(TAG, "Frames Directory Created Successfully!");
-        } else {
-            Log.i(TAG, "'" + frames.getPath() + "' exists");
-        }
     }
-}
